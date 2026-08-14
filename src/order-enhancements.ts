@@ -15,6 +15,34 @@ function parseEuroValue(text: string) {
   return digits ? Number(digits) : 0;
 }
 
+function formatCopiedOrder(text: string) {
+  return text
+    .replace(/\bdb\b/gi, "pc")
+    .replace(/^\s*Összesen\s*:/gim, "Total:");
+}
+
+function installEnglishClipboardOutput() {
+  if (typeof Clipboard === "undefined") return;
+
+  const clipboardPrototype = Clipboard.prototype as Clipboard & {
+    __trEnglishCopyInstalled?: boolean;
+  };
+
+  if (clipboardPrototype.__trEnglishCopyInstalled) return;
+
+  const originalWriteText = Clipboard.prototype.writeText;
+  if (typeof originalWriteText !== "function") return;
+
+  try {
+    Clipboard.prototype.writeText = function (text: string) {
+      return originalWriteText.call(this, formatCopiedOrder(text));
+    };
+    clipboardPrototype.__trEnglishCopyInstalled = true;
+  } catch {
+    // If a browser does not allow overriding Clipboard.prototype, leave copying functional.
+  }
+}
+
 function ensureRateStyle() {
   if (document.getElementById("huf-rate-style")) return;
   const style = document.createElement("style");
@@ -88,6 +116,7 @@ async function loadExchangeRate() {
 }
 
 export function installOrderEnhancements() {
+  installEnglishClipboardOutput();
   renderHufMetric();
   void loadExchangeRate();
 
