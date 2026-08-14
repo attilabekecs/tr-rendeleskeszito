@@ -21,17 +21,20 @@ function formatCopiedOrder(text: string) {
 }
 
 function installEnglishClipboardOutput() {
-  const clipboard = navigator.clipboard;
-  if (!clipboard?.writeText) return;
+  if (typeof Clipboard === "undefined") return;
 
-  const originalWriteText = clipboard.writeText.bind(clipboard);
+  const prototype = Clipboard.prototype as Clipboard & {
+    __trEnglishClipboardInstalled?: boolean;
+  };
 
-  try {
-    clipboard.writeText = (text: string) => originalWriteText(formatCopiedOrder(text));
-  } catch {
-    // Some browsers expose Clipboard methods as read-only. The app keeps working
-    // normally there; the UI enhancement below is independent of clipboard access.
-  }
+  if (prototype.__trEnglishClipboardInstalled) return;
+
+  const originalWriteText = Clipboard.prototype.writeText;
+  Clipboard.prototype.writeText = function (text: string) {
+    return originalWriteText.call(this, formatCopiedOrder(text));
+  };
+
+  prototype.__trEnglishClipboardInstalled = true;
 }
 
 function ensureRateStyle() {
@@ -55,6 +58,12 @@ function ensureRateStyle() {
   document.head.appendChild(style);
 }
 
+function setTextIfChanged(element: Element | null, value: string) {
+  if (element && element.textContent !== value) {
+    element.textContent = value;
+  }
+}
+
 function renderHufMetric() {
   const metrics = document.querySelector<HTMLElement>(".metrics");
   if (!metrics) return;
@@ -70,20 +79,21 @@ function renderHufMetric() {
   }
 
   const eurMetric = Array.from(metrics.children).find((element) =>
-    element.textContent?.includes("Rendelés értéke"),
+    element !== tile && element.textContent?.includes("Rendelés értéke"),
   );
   const eurValue = parseEuroValue(eurMetric?.querySelector("strong")?.textContent ?? "0");
   const strong = tile.querySelector("strong");
   const small = tile.querySelector("small");
 
-  if (!strong || !small) return;
-
   if (exchangeRate && eurValue >= 0) {
-    strong.textContent = huf.format(eurValue * exchangeRate);
-    small.textContent = `1 EUR = ${exchangeRate.toLocaleString("hu-HU", { maximumFractionDigits: 2 })} HUF${exchangeDate ? ` · ${exchangeDate}` : ""}`;
+    setTextIfChanged(strong, huf.format(eurValue * exchangeRate));
+    setTextIfChanged(
+      small,
+      `1 EUR = ${exchangeRate.toLocaleString("hu-HU", { maximumFractionDigits: 2 })} HUF${exchangeDate ? ` · ${exchangeDate}` : ""}`,
+    );
   } else {
-    strong.textContent = "—";
-    small.textContent = "Aktuális középárfolyam betöltése…";
+    setTextIfChanged(strong, "—");
+    setTextIfChanged(small, "Aktuális középárfolyam betöltése…");
   }
 }
 
@@ -98,15 +108,17 @@ async function loadExchangeRate() {
     renderHufMetric();
   } catch {
     const small = document.querySelector<HTMLElement>(".huf-metric small");
-    if (small) small.textContent = "Az árfolyam most nem érhető el";
+    setTextIfChanged(small, "Az árfolyam most nem érhető el");
   }
 }
 
 export function installOrderEnhancements() {
   installEnglishClipboardOutput();
 
-  const observer = new MutationObserver(() => renderHufMetric());
-  observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+  const observer = new MutationObserver(() => {
+    window.requestAnimationFrame(renderHufMetric);
+  });
+  observer.observe(document.body, { childList: true, subtree: true });
 
   renderHufMetric();
   void loadExchangeRate();
