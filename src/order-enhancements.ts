@@ -8,33 +8,11 @@ const huf = new Intl.NumberFormat("hu-HU", {
 
 let exchangeRate: number | null = null;
 let exchangeDate = "";
+let lastEurValue = -1;
 
 function parseEuroValue(text: string) {
   const digits = text.replace(/[^\d]/g, "");
   return digits ? Number(digits) : 0;
-}
-
-function formatCopiedOrder(text: string) {
-  return text
-    .replace(/(\d+)\s+db\b/g, "$1 pc")
-    .replace(/^Összesen:/gm, "Total:");
-}
-
-function installEnglishClipboardOutput() {
-  if (typeof Clipboard === "undefined") return;
-
-  const prototype = Clipboard.prototype as Clipboard & {
-    __trEnglishClipboardInstalled?: boolean;
-  };
-
-  if (prototype.__trEnglishClipboardInstalled) return;
-
-  const originalWriteText = Clipboard.prototype.writeText;
-  Clipboard.prototype.writeText = function (text: string) {
-    return originalWriteText.call(this, formatCopiedOrder(text));
-  };
-
-  prototype.__trEnglishClipboardInstalled = true;
 }
 
 function ensureRateStyle() {
@@ -58,12 +36,6 @@ function ensureRateStyle() {
   document.head.appendChild(style);
 }
 
-function setTextIfChanged(element: Element | null, value: string) {
-  if (element && element.textContent !== value) {
-    element.textContent = value;
-  }
-}
-
 function renderHufMetric() {
   const metrics = document.querySelector<HTMLElement>(".metrics");
   if (!metrics) return;
@@ -82,18 +54,20 @@ function renderHufMetric() {
     element !== tile && element.textContent?.includes("Rendelés értéke"),
   );
   const eurValue = parseEuroValue(eurMetric?.querySelector("strong")?.textContent ?? "0");
+
+  if (eurValue === lastEurValue && exchangeRate) return;
+  lastEurValue = eurValue;
+
   const strong = tile.querySelector("strong");
   const small = tile.querySelector("small");
+  if (!strong || !small) return;
 
-  if (exchangeRate && eurValue >= 0) {
-    setTextIfChanged(strong, huf.format(eurValue * exchangeRate));
-    setTextIfChanged(
-      small,
-      `1 EUR = ${exchangeRate.toLocaleString("hu-HU", { maximumFractionDigits: 2 })} HUF${exchangeDate ? ` · ${exchangeDate}` : ""}`,
-    );
+  if (exchangeRate) {
+    strong.textContent = huf.format(eurValue * exchangeRate);
+    small.textContent = `1 EUR = ${exchangeRate.toLocaleString("hu-HU", { maximumFractionDigits: 2 })} HUF${exchangeDate ? ` · ${exchangeDate}` : ""}`;
   } else {
-    setTextIfChanged(strong, "—");
-    setTextIfChanged(small, "Aktuális középárfolyam betöltése…");
+    strong.textContent = "—";
+    small.textContent = "Aktuális középárfolyam betöltése…";
   }
 }
 
@@ -105,21 +79,17 @@ async function loadExchangeRate() {
     if (!Number.isFinite(data.rate)) throw new Error("Invalid EUR/HUF rate");
     exchangeRate = data.rate ?? null;
     exchangeDate = data.date ?? "";
+    lastEurValue = -1;
     renderHufMetric();
   } catch {
     const small = document.querySelector<HTMLElement>(".huf-metric small");
-    setTextIfChanged(small, "Az árfolyam most nem érhető el");
+    if (small) small.textContent = "Az árfolyam most nem érhető el";
   }
 }
 
 export function installOrderEnhancements() {
-  installEnglishClipboardOutput();
-
-  const observer = new MutationObserver(() => {
-    window.requestAnimationFrame(renderHufMetric);
-  });
-  observer.observe(document.body, { childList: true, subtree: true });
-
   renderHufMetric();
   void loadExchangeRate();
+
+  window.setInterval(renderHufMetric, 750);
 }
