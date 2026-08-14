@@ -2,6 +2,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import Home from "../app/page";
 import "../app/globals.css";
+import { installOrderEnhancements } from "./order-enhancements";
 
 const rootElement = document.getElementById("root");
 
@@ -14,3 +15,5 @@ createRoot(rootElement).render(
     <Home />
   </StrictMode>,
 );
+
+installOrderEnhancements();
