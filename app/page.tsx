@@ -2,6 +2,11 @@
 
 import { ChangeEvent, DragEvent, useMemo, useRef, useState } from "react";
 import * as XLSX from "xlsx";
+import {
+  AB_REFERENCE_PRICES,
+  AB_REFERENCE_UPDATED_AT,
+  formatAbReferenceStockList,
+} from "../src/abReferencePrices";
 import { calculateOrderPricing } from "../src/orderPricing";
 
 type Need = { model: string; quantity: number };
@@ -44,27 +49,7 @@ const DEFAULT_TR = `Stock A
 17 PRO MAX 512GB A - €1200,-
 
 Stock A/B
-SE 3 64GB A/B - €95,- (P-SIM)
-14 128GB A/B - €250,-
-14 128GB A/B - €270,- (P-SIM)
-14 PRO 128GB A/B - €390,-
-14 PRO 256GB A/B - €420,-
-14 PRO MAX 256GB A/B - €455,-
-15 128GB A/B - €360,-
-15 512GB A/B - €410,-
-15 PRO 128GB A/B - €470,-
-15 PRO 256GB A/B - €550,- (P-SIM)
-16 128GB A/B - €505,-
-16 128GB A/B - €550,- (P-SIM)
-16E 128GB A/B - €320,-
-16 PRO 256GB A/B - €660,-
-17 AIR 256GB A/B - €650,-
-17 PRO 256GB A/B - €940,-
-17 PRO MAX 256GB A/B - €1070,-
-17 PRO MAX 512GB A/B - €1170,-
-
-iPad
-IPAD AIR 13 (2024) WIFI + CELLULAR 128GB A/B - €520,-
+${formatAbReferenceStockList()}
 IPAD PRO 13 (2024) 13' WIFI + CELLULAR 256GB A - €800,-
 IPAD PRO 13 (2024) 13' WIFI + CELLULAR 512GB A - €815,-
 
@@ -167,6 +152,12 @@ const euro = new Intl.NumberFormat("hu-HU", {
   maximumFractionDigits: 0,
 });
 
+const referenceUpdatedAt = new Intl.DateTimeFormat("hu-HU", {
+  year: "numeric",
+  month: "short",
+  day: "numeric",
+}).format(new Date(`${AB_REFERENCE_UPDATED_AT}T12:00:00Z`));
+
 export default function Home() {
   const inputRef = useRef<HTMLInputElement>(null);
   const [fileName, setFileName] = useState("");
@@ -188,8 +179,8 @@ export default function Home() {
     [orders],
   );
   const pricing = useMemo(
-    () => calculateOrderPricing(orderedRows, parsedOffers),
-    [orderedRows, parsedOffers],
+    () => calculateOrderPricing(orderedRows, AB_REFERENCE_PRICES),
+    [orderedRows],
   );
   const { totalQuantity, totalValue } = pricing;
 
@@ -485,6 +476,7 @@ export default function Home() {
                   {pricing.unmatchedBcQuantity > 0
                     ? ` · ${pricing.unmatchedBcQuantity} db-hoz nincs pontos A/B ajánlat`
                     : ""}
+                  {` · Referencia: ${referenceUpdatedAt}`}
                 </small>
               </div>
               <div className="combined-metric">

@@ -26,6 +26,22 @@ npm test
 Az Excel-feldolgozás helyben, a böngészőben történik; a kiválasztott fájl nem
 kerül feltöltésre.
 
+## A/B referenciaárak manuális frissítése
+
+A B/C készülékek árkülönbözetének viszonyítási alapja külön fájlban található:
+
+`src/abReferencePrices.ts`
+
+Frissítéskor:
+
+1. Írd át az `AB_REFERENCE_UPDATED_AT` dátumot `YYYY-MM-DD` formátumban.
+2. A megfelelő készüléksorban módosítsd a `price` értékét.
+3. Új modell, tárhely vagy P-SIM-változat esetén adj hozzá új sort.
+4. Futtasd az `npm test` parancsot, majd töltsd fel a módosítást a `main` ágra.
+
+Ugyanez a lista adja az oldal induló Stock A/B blokkját, ezért az árakat csak
+egyetlen helyen kell karbantartani.
+
 ## Eredeti Sites projektleírás
 
 A clean full-stack starter running on

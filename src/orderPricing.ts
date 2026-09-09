@@ -23,9 +23,9 @@ export type OrderPricingSummary = {
 
 function findCheapestMatchingAbOffer(
   selected: PricingOffer,
-  offers: PricingOffer[],
+  referenceOffers: PricingOffer[],
 ) {
-  return offers
+  return referenceOffers
     .filter(
       (offer) =>
         offer.grade === "A/B" &&
@@ -43,7 +43,7 @@ function findCheapestMatchingAbOffer(
 
 export function calculateOrderPricing(
   rows: PricedOrderRow[],
-  offers: PricingOffer[],
+  referenceOffers: PricingOffer[],
 ): OrderPricingSummary {
   const summary = rows.reduce<OrderPricingSummary>(
     (result, row) => {
@@ -57,7 +57,10 @@ export function calculateOrderPricing(
         return result;
       }
 
-      const abAlternative = findCheapestMatchingAbOffer(selected, offers);
+      const abAlternative = findCheapestMatchingAbOffer(
+        selected,
+        referenceOffers,
+      );
       if (!abAlternative) {
         result.unmatchedBcQuantity += quantity;
         return result;
