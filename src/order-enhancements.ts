@@ -48,7 +48,7 @@ function ensureRateStyle() {
   const style = document.createElement("style");
   style.id = "huf-rate-style";
   style.textContent = `
-    .metrics { grid-template-columns: repeat(4, 1fr); }
+    .metrics { grid-template-columns: repeat(6, minmax(0, 1fr)); }
     .metrics .huf-metric strong { color: var(--success); }
     .metrics .huf-metric small {
       display: block;
@@ -57,8 +57,14 @@ function ensureRateStyle() {
       font-size: 9px;
       line-height: 1.35;
     }
+    @media (max-width: 1180px) {
+      .metrics { grid-template-columns: repeat(3, 1fr); }
+    }
     @media (max-width: 900px) {
       .metrics { grid-template-columns: 1fr 1fr; }
+    }
+    @media (max-width: 560px) {
+      .metrics { grid-template-columns: 1fr; }
     }
   `;
   document.head.appendChild(style);

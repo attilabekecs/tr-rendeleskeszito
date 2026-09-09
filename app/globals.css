@@ -183,14 +183,22 @@ select {
 .secondary.strong { border-color: rgba(53, 212, 154, .4); color: var(--success); }
 .secondary:disabled { opacity: .45; cursor: not-allowed; }
 .metrics {
-  display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; padding: 14px 20px;
+  display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; padding: 14px 20px;
   border-bottom: 1px solid var(--border); background: rgba(5, 14, 27, .16);
 }
 .metrics > div { border: 1px solid var(--border); border-radius: 9px; padding: 12px 14px; background: rgba(17, 31, 52, .7); }
 .metrics span { display: block; color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: .07em; }
 .metrics strong { display: block; margin-top: 5px; font-size: 20px; font-variant-numeric: tabular-nums; }
+.metrics small { display: block; margin-top: 5px; color: var(--muted); font-size: 10px; line-height: 1.35; }
 .metrics .warning-metric { border-color: rgba(244, 183, 64, .38); }
 .metrics .warning-metric strong { color: var(--warning); }
+.metrics .comparison-metric { border-color: rgba(244, 183, 64, .38); }
+.metrics .comparison-metric strong { color: var(--warning); }
+.metrics .combined-metric {
+  border-color: rgba(53, 212, 154, .4);
+  background: rgba(53, 212, 154, .07);
+}
+.metrics .combined-metric strong { color: var(--success); }
 
 .table-wrap { overflow-x: auto; }
 table { width: 100%; border-collapse: collapse; min-width: 1050px; }
@@ -260,6 +268,9 @@ td small { display: block; color: var(--muted); font-size: 10px; margin-top: 4px
   .results-title { align-items: stretch; flex-direction: column; }
   .export-actions button { flex: 1; }
 }
+@media (max-width: 1180px) and (min-width: 901px) {
+  .metrics { grid-template-columns: repeat(3, 1fr); }
+}
 @media (max-width: 560px) {
   .shell { padding: 12px; }
   .topbar { padding: 12px; }
@@ -267,7 +278,7 @@ td small { display: block; color: var(--muted); font-size: 10px; margin-top: 4px
   .brand p { display: none; }
   .panel { padding: 14px; min-height: auto; }
   .dropzone { height: 220px; }
-  .metrics { padding: 12px; }
+  .metrics { grid-template-columns: 1fr; padding: 12px; }
   .results-title { padding: 16px 14px; }
   .export-actions { flex-direction: column; }
   .textarea-footer span { display: none; }

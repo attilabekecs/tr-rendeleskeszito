@@ -2,6 +2,7 @@
 
 import { ChangeEvent, DragEvent, useMemo, useRef, useState } from "react";
 import * as XLSX from "xlsx";
+import { calculateOrderPricing } from "../src/orderPricing";
 
 type Need = { model: string; quantity: number };
 type Offer = {
@@ -186,11 +187,11 @@ export default function Home() {
       })),
     [orders],
   );
-  const totalQuantity = orderedRows.reduce((sum, row) => sum + row.quantity, 0);
-  const totalValue = orderedRows.reduce(
-    (sum, row) => sum + row.quantity * (row.selected?.price ?? 0),
-    0,
+  const pricing = useMemo(
+    () => calculateOrderPricing(orderedRows, parsedOffers),
+    [orderedRows, parsedOffers],
   );
+  const { totalQuantity, totalValue } = pricing;
 
   async function readExcel(file?: File) {
     if (!file) return;
@@ -471,6 +472,26 @@ export default function Home() {
               <div><span>Rendelési sor</span><strong>{orders.length}</strong></div>
               <div><span>Összes mennyiség</span><strong>{totalQuantity} db</strong></div>
               <div><span>Rendelés értéke</span><strong>{euro.format(totalValue)}</strong></div>
+              <div className="comparison-metric">
+                <span>B/C → A/B árkülönbözet</span>
+                <strong>
+                  {pricing.abPriceDifference > 0 ? "+" : ""}
+                  {euro.format(pricing.abPriceDifference)}
+                </strong>
+                <small>
+                  {pricing.comparableBcQuantity > 0
+                    ? `${pricing.comparableBcQuantity} db összehasonlítható B/C készülék`
+                    : "Nincs összehasonlítható B/C készülék"}
+                  {pricing.unmatchedBcQuantity > 0
+                    ? ` · ${pricing.unmatchedBcQuantity} db-hoz nincs pontos A/B ajánlat`
+                    : ""}
+                </small>
+              </div>
+              <div className="combined-metric">
+                <span>Összérték A/B választással</span>
+                <strong>{euro.format(pricing.totalWithAbAlternative)}</strong>
+                <small>Rendelés értéke + A/B árkülönbözet</small>
+              </div>
             </div>
 
             {orders.length > 0 && (
