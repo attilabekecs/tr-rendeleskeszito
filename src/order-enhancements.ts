@@ -62,8 +62,7 @@ function ensureRateStyle() {
     .metrics { grid-template-columns: repeat(6, minmax(0, 1fr)); }
     .metrics .huf-metric { grid-column: span 1; }
     .metrics .huf-metric strong { color: var(--success); }
-    .metrics .huf-metric small,
-    .metrics .combined-metric .combined-huf {
+    .metrics .huf-metric small {
       display: block;
       margin-top: 4px;
       color: var(--muted);
@@ -71,16 +70,24 @@ function ensureRateStyle() {
       line-height: 1.35;
     }
     .metrics .combined-metric .combined-huf {
+      display: block;
+      margin-top: 3px;
       color: var(--success);
-      font-weight: 700;
+      font-size: 19px;
+      font-weight: 800;
+      line-height: 1.15;
     }
     .metrics .eur-huf-line {
       display: block;
       margin-top: 3px;
       color: var(--success);
-      font-size: 17px;
+      font-size: 19px;
       font-weight: 800;
       line-height: 1.15;
+    }
+    .metrics .comparison-metric > small,
+    .metrics .combined-metric > small:not(.combined-huf) {
+      display: none !important;
     }
     .metrics .rate-metric {
       border: 1px solid rgba(125, 211, 252, .22);
