@@ -61,12 +61,17 @@ function ensureRateStyle() {
   style.textContent = `
     .metrics { grid-template-columns: repeat(6, minmax(0, 1fr)); }
     .metrics .huf-metric strong { color: var(--success); }
-    .metrics .huf-metric small {
+    .metrics .huf-metric small,
+    .metrics .combined-metric .combined-huf { 
       display: block;
       margin-top: 4px;
       color: var(--muted);
       font-size: 9px;
       line-height: 1.35;
+    }
+    .metrics .combined-metric .combined-huf {
+      color: var(--success);
+      font-weight: 700;
     }
     .ab-comparison input:focus { outline: 2px solid rgba(125, 211, 252, .35); outline-offset: 1px; }
     @media (max-width: 1180px) {
@@ -130,8 +135,6 @@ function renderAbManualPricing() {
   const combinedMetric = metrics.querySelector<HTMLElement>(".combined-metric");
   if (!comparisonMetric || !combinedMetric) return;
 
-  // Always calculate directly from the current table rows. This prevents stale
-  // values and prevents the manual adjustment from accumulating between refreshes.
   const current = getAbDifferenceFromRows();
   const comparisonStrong = comparisonMetric.querySelector("strong");
   if (comparisonStrong) {
@@ -150,8 +153,27 @@ function renderAbManualPricing() {
     element !== combinedMetric && element.textContent?.includes("Rendelés értéke"),
   );
   const orderValue = parseEuroValue(orderMetric?.querySelector("strong")?.textContent ?? "0");
+  const combinedValue = orderValue + current.difference;
   const combinedStrong = combinedMetric.querySelector("strong");
-  if (combinedStrong) combinedStrong.textContent = euro.format(orderValue + current.difference);
+  if (combinedStrong) combinedStrong.textContent = euro.format(combinedValue);
+
+  let combinedHuf = combinedMetric.querySelector<HTMLElement>(".combined-huf");
+  if (!combinedHuf) {
+    combinedHuf = document.createElement("small");
+    combinedHuf.className = "combined-huf";
+    const description = combinedMetric.querySelector("small:not(.combined-huf)");
+    if (description) {
+      description.insertAdjacentElement("afterend", combinedHuf);
+    } else {
+      combinedMetric.appendChild(combinedHuf);
+    }
+  }
+
+  if (exchangeRate) {
+    combinedHuf.textContent = `≈ ${huf.format(combinedValue * exchangeRate)} · 1 EUR = ${exchangeRate.toLocaleString("hu-HU", { maximumFractionDigits: 2 })} HUF`;
+  } else {
+    combinedHuf.textContent = "HUF érték: árfolyam betöltése…";
+  }
 }
 
 function renderHufMetric() {
