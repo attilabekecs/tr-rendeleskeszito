@@ -49,11 +49,16 @@ export function findMatchingAbOffer(
 
 export function getAbComparison(
   selected: PricingOffer | undefined,
-  referenceOffers: PricingOffer[],
+  uploadedOffers: PricingOffer[],
+  fallbackOffers: PricingOffer[] = [],
 ): AbComparison | undefined {
   if (!selected || selected.grade !== "B/C") return undefined;
 
-  const reference = findMatchingAbOffer(selected, referenceOffers);
+  // The uploaded TR list is always the primary source. The hard-coded
+  // reference list is only used when the uploaded list has no matching A/B offer.
+  const uploadedReference = findMatchingAbOffer(selected, uploadedOffers);
+  const reference = uploadedReference ?? findMatchingAbOffer(selected, fallbackOffers);
+
   if (!reference) {
     return { matched: false, difference: 0 };
   }
@@ -67,7 +72,8 @@ export function getAbComparison(
 
 export function calculateOrderPricing(
   rows: PricedOrderRow[],
-  referenceOffers: PricingOffer[],
+  uploadedOffers: PricingOffer[],
+  fallbackOffers: PricingOffer[] = [],
 ): OrderPricingSummary {
   const summary = rows.reduce<OrderPricingSummary>(
     (result, row) => {
@@ -77,7 +83,7 @@ export function calculateOrderPricing(
       result.totalQuantity += quantity;
       result.totalValue += quantity * (selected?.price ?? 0);
 
-      const comparison = getAbComparison(selected, referenceOffers);
+      const comparison = getAbComparison(selected, uploadedOffers, fallbackOffers);
       if (!comparison || quantity === 0) return result;
 
       if (!comparison.matched) {
