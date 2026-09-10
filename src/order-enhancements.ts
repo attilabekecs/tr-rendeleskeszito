@@ -76,11 +76,11 @@ function ensureRateStyle() {
     }
     .metrics .eur-huf-line {
       display: block;
-      margin-top: 5px;
+      margin-top: 3px;
       color: var(--success);
-      font-size: 10px;
-      font-weight: 700;
-      line-height: 1.3;
+      font-size: 17px;
+      font-weight: 800;
+      line-height: 1.15;
     }
     .metrics .rate-metric {
       border: 1px solid rgba(125, 211, 252, .22);
@@ -164,10 +164,8 @@ function renderAbManualPricing() {
 
   const comparisonSmall = comparisonMetric.querySelector("small");
   if (comparisonSmall) {
-    const baseText = comparisonSmall.textContent?.replace(/ · Manuális A\/B:.*$/i, "") ?? "";
-    comparisonSmall.textContent = current.manualQuantity > 0
-      ? `${baseText} · Manuális A/B: ${current.manualQuantity} db`
-      : baseText;
+    comparisonSmall.textContent = "";
+    comparisonSmall.style.display = "none";
   }
 
   const orderMetric = Array.from(metrics.children).find((element) =>
@@ -212,7 +210,6 @@ function renderHufMetric() {
     metrics.appendChild(tile);
   }
 
-  // The standalone HUF tile is no longer needed: every EUR value gets its HUF value directly below it.
   tile.style.display = "none";
 
   const eurMetrics = Array.from(metrics.querySelectorAll<HTMLElement>(".combined-metric, .comparison-metric"));
@@ -235,7 +232,6 @@ function renderHufMetric() {
     line.textContent = exchangeRate ? `≈ ${huf.format(eurValue * exchangeRate)}` : "HUF: árfolyam betöltése…";
   });
 
-  // Add one dedicated current-rate indicator to the page metrics.
   let rateMetric = metrics.querySelector<HTMLElement>(".rate-metric");
   if (!rateMetric) {
     rateMetric = document.createElement("div");
