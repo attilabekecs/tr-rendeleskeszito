@@ -17,9 +17,13 @@ let exchangeDate = "";
 let lastEurValue = -1;
 
 function parseEuroValue(text: string) {
-  const match = text.match(/-?[\d.,]+/);
+  const normalized = text.replace(/\s/g, "");
+  const match = normalized.match(/[+-]?(?:€)?[\d.,]+/);
   if (!match) return 0;
-  return Number(match[0].replace(/\./g, "").replace(",", "."));
+  const value = match[0].replace("€", "");
+  const sign = value.startsWith("-") ? -1 : 1;
+  const unsigned = value.replace(/^[+-]/, "");
+  return sign * Number(unsigned.replace(/\./g, "").replace(",", "."));
 }
 
 function formatCopiedOrder(text: string) {
@@ -83,7 +87,10 @@ function getManualAbAdjustment() {
   let quantity = 0;
 
   document.querySelectorAll<HTMLInputElement>(".ab-comparison.unmatched input").forEach((input) => {
-    const manualAbPrice = Number(input.value.replace(",", "."));
+    const rawValue = input.value.trim();
+    if (!rawValue) return;
+
+    const manualAbPrice = Number(rawValue.replace(",", "."));
     if (!Number.isFinite(manualAbPrice) || manualAbPrice <= 0) return;
 
     const row = input.closest("tr");
@@ -112,7 +119,15 @@ function renderAbManualPricing() {
   const combinedMetric = metrics.querySelector<HTMLElement>(".combined-metric");
   if (!comparisonMetric || !combinedMetric) return;
 
-  const baseDifference = parseEuroValue(comparisonMetric.querySelector("strong")?.textContent ?? "0");
+  // Store the React-calculated base value once. Never parse our own modified value,
+  // otherwise the manual adjustment would be added again on every refresh.
+  if (!comparisonMetric.dataset.baseDifference) {
+    comparisonMetric.dataset.baseDifference = String(
+      parseEuroValue(comparisonMetric.querySelector("strong")?.textContent ?? "0"),
+    );
+  }
+
+  const baseDifference = Number(comparisonMetric.dataset.baseDifference ?? 0);
   const manual = getManualAbAdjustment();
   const totalDifference = baseDifference + manual.adjustment;
 
