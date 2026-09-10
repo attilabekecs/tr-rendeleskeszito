@@ -12,6 +12,12 @@ export type PricedOrderRow = {
   selected?: PricingOffer;
 };
 
+export type AbComparison = {
+  matched: boolean;
+  reference?: PricingOffer;
+  difference: number;
+};
+
 export type OrderPricingSummary = {
   totalQuantity: number;
   totalValue: number;
@@ -21,7 +27,7 @@ export type OrderPricingSummary = {
   unmatchedBcQuantity: number;
 };
 
-function findCheapestMatchingAbOffer(
+export function findMatchingAbOffer(
   selected: PricingOffer,
   referenceOffers: PricingOffer[],
 ) {
@@ -41,6 +47,24 @@ function findCheapestMatchingAbOffer(
     );
 }
 
+export function getAbComparison(
+  selected: PricingOffer | undefined,
+  referenceOffers: PricingOffer[],
+): AbComparison | undefined {
+  if (!selected || selected.grade !== "B/C") return undefined;
+
+  const reference = findMatchingAbOffer(selected, referenceOffers);
+  if (!reference) {
+    return { matched: false, difference: 0 };
+  }
+
+  return {
+    matched: true,
+    reference,
+    difference: reference.price - selected.price,
+  };
+}
+
 export function calculateOrderPricing(
   rows: PricedOrderRow[],
   referenceOffers: PricingOffer[],
@@ -53,22 +77,16 @@ export function calculateOrderPricing(
       result.totalQuantity += quantity;
       result.totalValue += quantity * (selected?.price ?? 0);
 
-      if (!selected || selected.grade !== "B/C" || quantity === 0) {
-        return result;
-      }
+      const comparison = getAbComparison(selected, referenceOffers);
+      if (!comparison || quantity === 0) return result;
 
-      const abAlternative = findCheapestMatchingAbOffer(
-        selected,
-        referenceOffers,
-      );
-      if (!abAlternative) {
+      if (!comparison.matched) {
         result.unmatchedBcQuantity += quantity;
         return result;
       }
 
       result.comparableBcQuantity += quantity;
-      result.abPriceDifference +=
-        (abAlternative.price - selected.price) * quantity;
+      result.abPriceDifference += comparison.difference * quantity;
       return result;
     },
     {
