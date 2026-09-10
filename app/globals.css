@@ -283,3 +283,16 @@ td small { display: block; color: var(--muted); font-size: 10px; margin-top: 4px
   .export-actions { flex-direction: column; }
   .textarea-footer span { display: none; }
 }
+
+
+.ab-comparison { min-width: 145px; }
+.ab-comparison strong { font-size: 11px; }
+.ab-comparison small { font-size: 10px; }
+.ab-comparison.matched strong { color: #7dd3fc; }
+.ab-comparison.matched small { color: var(--warning); font-weight: 700; }
+.ab-comparison.unmatched strong { color: #ffe1a2; }
+.ab-comparison.unmatched input {
+  width: 92px; margin-top: 7px; padding: 6px 7px;
+  border: 1px solid rgba(244, 183, 64, .45); border-radius: 6px;
+  background: #091425; color: #fff; font-size: 11px;
+}
