@@ -60,9 +60,10 @@ function ensureRateStyle() {
   style.id = "huf-rate-style";
   style.textContent = `
     .metrics { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+    .metrics .huf-metric { grid-column: span 1; }
     .metrics .huf-metric strong { color: var(--success); }
     .metrics .huf-metric small,
-    .metrics .combined-metric .combined-huf { 
+    .metrics .combined-metric .combined-huf {
       display: block;
       margin-top: 4px;
       color: var(--muted);
@@ -72,6 +73,26 @@ function ensureRateStyle() {
     .metrics .combined-metric .combined-huf {
       color: var(--success);
       font-weight: 700;
+    }
+    .metrics .eur-huf-line {
+      display: block;
+      margin-top: 5px;
+      color: var(--success);
+      font-size: 10px;
+      font-weight: 700;
+      line-height: 1.3;
+    }
+    .metrics .rate-metric {
+      border: 1px solid rgba(125, 211, 252, .22);
+      background: rgba(125, 211, 252, .05);
+    }
+    .metrics .rate-metric strong {
+      color: var(--accent, #7dd3fc);
+      font-size: 18px;
+    }
+    .metrics .rate-metric small {
+      color: var(--muted);
+      font-size: 9px;
     }
     .ab-comparison input:focus { outline: 2px solid rgba(125, 211, 252, .35); outline-offset: 1px; }
     @media (max-width: 1180px) {
@@ -170,7 +191,7 @@ function renderAbManualPricing() {
   }
 
   if (exchangeRate) {
-    combinedHuf.textContent = `≈ ${huf.format(combinedValue * exchangeRate)} · 1 EUR = ${exchangeRate.toLocaleString("hu-HU", { maximumFractionDigits: 2 })} HUF`;
+    combinedHuf.textContent = `≈ ${huf.format(combinedValue * exchangeRate)}`;
   } else {
     combinedHuf.textContent = "HUF érték: árfolyam betöltése…";
   }
@@ -191,24 +212,48 @@ function renderHufMetric() {
     metrics.appendChild(tile);
   }
 
-  const eurMetric = Array.from(metrics.children).find((element) =>
+  // The standalone HUF tile is no longer needed: every EUR value gets its HUF value directly below it.
+  tile.style.display = "none";
+
+  const eurMetrics = Array.from(metrics.querySelectorAll<HTMLElement>(".combined-metric, .comparison-metric"));
+  const orderMetric = Array.from(metrics.children).find((element) =>
     element !== tile && element.textContent?.includes("Rendelés értéke"),
-  );
-  const eurValue = parseEuroValue(eurMetric?.querySelector("strong")?.textContent ?? "0");
+  ) as HTMLElement | undefined;
+  if (orderMetric) eurMetrics.push(orderMetric);
 
-  if (eurValue === lastEurValue && exchangeRate) return;
-  lastEurValue = eurValue;
+  eurMetrics.forEach((metric) => {
+    const strong = metric.querySelector("strong");
+    if (!strong) return;
+    if (metric.classList.contains("comparison-metric")) return;
+    const eurValue = parseEuroValue(strong.textContent ?? "0");
+    let line = metric.querySelector<HTMLElement>(".eur-huf-line");
+    if (!line) {
+      line = document.createElement("small");
+      line.className = "eur-huf-line";
+      strong.insertAdjacentElement("afterend", line);
+    }
+    line.textContent = exchangeRate ? `≈ ${huf.format(eurValue * exchangeRate)}` : "HUF: árfolyam betöltése…";
+  });
 
-  const strong = tile.querySelector("strong");
-  const small = tile.querySelector("small");
-  if (!strong || !small) return;
+  // Add one dedicated current-rate indicator to the page metrics.
+  let rateMetric = metrics.querySelector<HTMLElement>(".rate-metric");
+  if (!rateMetric) {
+    rateMetric = document.createElement("div");
+    rateMetric.className = "rate-metric";
+    rateMetric.innerHTML = "<span>Aktuális EUR/HUF árfolyam</span><strong>—</strong><small>Középárfolyam betöltése…</small>";
+    metrics.appendChild(rateMetric);
+  }
 
-  if (exchangeRate) {
-    strong.textContent = huf.format(eurValue * exchangeRate);
-    small.textContent = `1 EUR = ${exchangeRate.toLocaleString("hu-HU", { maximumFractionDigits: 2 })} HUF${exchangeDate ? ` · ${exchangeDate}` : ""}`;
-  } else {
-    strong.textContent = "—";
-    small.textContent = "Aktuális középárfolyam betöltése…";
+  const rateStrong = rateMetric.querySelector("strong");
+  const rateSmall = rateMetric.querySelector("small");
+  if (rateStrong && rateSmall) {
+    if (exchangeRate) {
+      rateStrong.textContent = `${exchangeRate.toLocaleString("hu-HU", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Ft`;
+      rateSmall.textContent = exchangeDate ? `EUR/HUF középárfolyam · ${exchangeDate}` : "EUR/HUF középárfolyam";
+    } else {
+      rateStrong.textContent = "—";
+      rateSmall.textContent = "Középárfolyam betöltése…";
+    }
   }
 }
 
@@ -223,7 +268,7 @@ async function loadExchangeRate() {
     lastEurValue = -1;
     renderHufMetric();
   } catch {
-    const small = document.querySelector<HTMLElement>(".huf-metric small");
+    const small = document.querySelector<HTMLElement>(".rate-metric small");
     if (small) small.textContent = "Az árfolyam most nem érhető el";
   }
 }
