@@ -7,7 +7,7 @@ import {
   AB_REFERENCE_UPDATED_AT,
   formatAbReferenceStockList,
 } from "../src/abReferencePrices";
-import { calculateOrderPricing } from "../src/orderPricing";
+import { calculateOrderPricing, getAbComparison } from "../src/orderPricing";
 
 type Need = { model: string; quantity: number };
 type Offer = {
@@ -496,6 +496,7 @@ export default function Home() {
                       <th>Állapot</th>
                       <th>SIM</th>
                       <th>Egységár</th>
+                      <th>A/B összehasonlítás</th>
                       <th>Rendelendő db</th>
                       <th>Összesen</th>
                       <th aria-label="Törlés" />
@@ -534,6 +535,34 @@ export default function Home() {
                         <td><span className={`grade grade-${row.selected.grade.replace("/", "")}`}>{row.selected.grade}</span></td>
                         <td>{row.selected.psim ? <span className="psim">P-SIM</span> : <span className="muted">—</span>}</td>
                         <td className="number">{euro.format(row.selected.price)}</td>
+                        <td>
+                          {(() => {
+                            const comparison = getAbComparison(row.selected, AB_REFERENCE_PRICES);
+                            if (!comparison) return <span className="muted">—</span>;
+                            if (!comparison.matched) {
+                              return (
+                                <div className="ab-comparison unmatched">
+                                  <strong>Nincs A/B ár</strong>
+                                  <small>Manuálisan megadható</small>
+                                  <input
+                                    type="number"
+                                    placeholder="A/B €"
+                                    aria-label={`${row.selected.name} manuális A/B ár`}
+                                  />
+                                </div>
+                              );
+                            }
+                            return (
+                              <div className="ab-comparison matched">
+                                <strong>A/B: {euro.format(comparison.reference!.price)}</strong>
+                                <small>
+                                  Különbség: {comparison.difference > 0 ? "+" : ""}
+                                  {euro.format(comparison.difference)}
+                                </small>
+                              </div>
+                            );
+                          })()}
+                        </td>
                         <td>
                           <div className="stepper">
                             <button onClick={() => updateQuantity(row.id, row.quantity - 1)} aria-label="Csökkentés">−</button>
