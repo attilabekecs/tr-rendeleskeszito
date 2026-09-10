@@ -6,13 +6,20 @@ const huf = new Intl.NumberFormat("hu-HU", {
   maximumFractionDigits: 0,
 });
 
+const euro = new Intl.NumberFormat("hu-HU", {
+  style: "currency",
+  currency: "EUR",
+  maximumFractionDigits: 0,
+});
+
 let exchangeRate: number | null = null;
 let exchangeDate = "";
 let lastEurValue = -1;
 
 function parseEuroValue(text: string) {
-  const digits = text.replace(/[^\d]/g, "");
-  return digits ? Number(digits) : 0;
+  const match = text.match(/-?[\d.,]+/);
+  if (!match) return 0;
+  return Number(match[0].replace(/\./g, "").replace(",", "."));
 }
 
 function formatCopiedOrder(text: string) {
@@ -57,6 +64,7 @@ function ensureRateStyle() {
       font-size: 9px;
       line-height: 1.35;
     }
+    .ab-comparison input:focus { outline: 2px solid rgba(125, 211, 252, .35); outline-offset: 1px; }
     @media (max-width: 1180px) {
       .metrics { grid-template-columns: repeat(3, 1fr); }
     }
@@ -70,11 +78,69 @@ function ensureRateStyle() {
   document.head.appendChild(style);
 }
 
+function getManualAbAdjustment() {
+  let adjustment = 0;
+  let quantity = 0;
+
+  document.querySelectorAll<HTMLInputElement>(".ab-comparison.unmatched input").forEach((input) => {
+    const manualAbPrice = Number(input.value.replace(",", "."));
+    if (!Number.isFinite(manualAbPrice) || manualAbPrice <= 0) return;
+
+    const row = input.closest("tr");
+    if (!row) return;
+
+    const cells = Array.from(row.querySelectorAll("td"));
+    const unitPriceCell = cells.find((cell) => cell.classList.contains("number") && !cell.classList.contains("total"));
+    const bcPrice = parseEuroValue(unitPriceCell?.textContent ?? "0");
+    const quantityInput = row.querySelector<HTMLInputElement>(".stepper input");
+    const rowQuantity = Number(quantityInput?.value ?? 0);
+
+    if (bcPrice > 0 && rowQuantity > 0) {
+      adjustment += (manualAbPrice - bcPrice) * rowQuantity;
+      quantity += rowQuantity;
+    }
+  });
+
+  return { adjustment, quantity };
+}
+
+function renderAbManualPricing() {
+  const metrics = document.querySelector<HTMLElement>(".metrics");
+  if (!metrics) return;
+
+  const comparisonMetric = metrics.querySelector<HTMLElement>(".comparison-metric");
+  const combinedMetric = metrics.querySelector<HTMLElement>(".combined-metric");
+  if (!comparisonMetric || !combinedMetric) return;
+
+  const baseDifference = parseEuroValue(comparisonMetric.querySelector("strong")?.textContent ?? "0");
+  const manual = getManualAbAdjustment();
+  const totalDifference = baseDifference + manual.adjustment;
+
+  const comparisonStrong = comparisonMetric.querySelector("strong");
+  if (comparisonStrong) {
+    comparisonStrong.textContent = `${totalDifference > 0 ? "+" : ""}${euro.format(totalDifference)}`;
+  }
+
+  const comparisonSmall = comparisonMetric.querySelector("small");
+  if (comparisonSmall && manual.quantity > 0) {
+    const current = comparisonSmall.textContent ?? "";
+    comparisonSmall.textContent = `${current.replace(/ · Manuális A\/B:.*$/i, "")} · Manuális A/B: ${manual.quantity} db`;
+  }
+
+  const orderMetric = Array.from(metrics.children).find((element) =>
+    element !== combinedMetric && element.textContent?.includes("Rendelés értéke"),
+  );
+  const orderValue = parseEuroValue(orderMetric?.querySelector("strong")?.textContent ?? "0");
+  const combinedStrong = combinedMetric.querySelector("strong");
+  if (combinedStrong) combinedStrong.textContent = euro.format(orderValue + totalDifference);
+}
+
 function renderHufMetric() {
   const metrics = document.querySelector<HTMLElement>(".metrics");
   if (!metrics) return;
 
   ensureRateStyle();
+  renderAbManualPricing();
 
   let tile = metrics.querySelector<HTMLElement>(".huf-metric");
   if (!tile) {
