@@ -82,33 +82,44 @@ function ensureRateStyle() {
   document.head.appendChild(style);
 }
 
-function getManualAbAdjustment() {
-  let adjustment = 0;
-  let quantity = 0;
+function getAbDifferenceFromRows() {
+  let difference = 0;
+  let manualQuantity = 0;
 
-  document.querySelectorAll<HTMLInputElement>(".ab-comparison.unmatched input").forEach((input) => {
-    const rawValue = input.value.trim();
+  document.querySelectorAll<HTMLTableRowElement>(".table-wrap table tbody tr").forEach((row) => {
+    const comparison = row.querySelector<HTMLElement>(".ab-comparison");
+    if (!comparison) return;
+
+    const quantityInput = row.querySelector<HTMLInputElement>(".stepper input");
+    const quantity = Number(quantityInput?.value ?? 0);
+    if (!Number.isFinite(quantity) || quantity <= 0) return;
+
+    if (comparison.classList.contains("matched")) {
+      const small = comparison.querySelector("small")?.textContent ?? "";
+      const unitDifference = parseEuroValue(small);
+      difference += unitDifference * quantity;
+      return;
+    }
+
+    const input = comparison.querySelector<HTMLInputElement>("input");
+    const rawValue = input?.value.trim() ?? "";
     if (!rawValue) return;
 
     const manualAbPrice = Number(rawValue.replace(",", "."));
     if (!Number.isFinite(manualAbPrice) || manualAbPrice <= 0) return;
 
-    const row = input.closest("tr");
-    if (!row) return;
-
     const cells = Array.from(row.querySelectorAll("td"));
-    const unitPriceCell = cells.find((cell) => cell.classList.contains("number") && !cell.classList.contains("total"));
+    const unitPriceCell = cells.find(
+      (cell) => cell.classList.contains("number") && !cell.classList.contains("total"),
+    );
     const bcPrice = parseEuroValue(unitPriceCell?.textContent ?? "0");
-    const quantityInput = row.querySelector<HTMLInputElement>(".stepper input");
-    const rowQuantity = Number(quantityInput?.value ?? 0);
+    if (bcPrice <= 0) return;
 
-    if (bcPrice > 0 && rowQuantity > 0) {
-      adjustment += (manualAbPrice - bcPrice) * rowQuantity;
-      quantity += rowQuantity;
-    }
+    difference += (manualAbPrice - bcPrice) * quantity;
+    manualQuantity += quantity;
   });
 
-  return { adjustment, quantity };
+  return { difference, manualQuantity };
 }
 
 function renderAbManualPricing() {
@@ -119,27 +130,20 @@ function renderAbManualPricing() {
   const combinedMetric = metrics.querySelector<HTMLElement>(".combined-metric");
   if (!comparisonMetric || !combinedMetric) return;
 
-  // Store the React-calculated base value once. Never parse our own modified value,
-  // otherwise the manual adjustment would be added again on every refresh.
-  if (!comparisonMetric.dataset.baseDifference) {
-    comparisonMetric.dataset.baseDifference = String(
-      parseEuroValue(comparisonMetric.querySelector("strong")?.textContent ?? "0"),
-    );
-  }
-
-  const baseDifference = Number(comparisonMetric.dataset.baseDifference ?? 0);
-  const manual = getManualAbAdjustment();
-  const totalDifference = baseDifference + manual.adjustment;
-
+  // Always calculate directly from the current table rows. This prevents stale
+  // values and prevents the manual adjustment from accumulating between refreshes.
+  const current = getAbDifferenceFromRows();
   const comparisonStrong = comparisonMetric.querySelector("strong");
   if (comparisonStrong) {
-    comparisonStrong.textContent = `${totalDifference > 0 ? "+" : ""}${euro.format(totalDifference)}`;
+    comparisonStrong.textContent = `${current.difference > 0 ? "+" : ""}${euro.format(current.difference)}`;
   }
 
   const comparisonSmall = comparisonMetric.querySelector("small");
-  if (comparisonSmall && manual.quantity > 0) {
-    const current = comparisonSmall.textContent ?? "";
-    comparisonSmall.textContent = `${current.replace(/ · Manuális A\/B:.*$/i, "")} · Manuális A/B: ${manual.quantity} db`;
+  if (comparisonSmall) {
+    const baseText = comparisonSmall.textContent?.replace(/ · Manuális A\/B:.*$/i, "") ?? "";
+    comparisonSmall.textContent = current.manualQuantity > 0
+      ? `${baseText} · Manuális A/B: ${current.manualQuantity} db`
+      : baseText;
   }
 
   const orderMetric = Array.from(metrics.children).find((element) =>
@@ -147,7 +151,7 @@ function renderAbManualPricing() {
   );
   const orderValue = parseEuroValue(orderMetric?.querySelector("strong")?.textContent ?? "0");
   const combinedStrong = combinedMetric.querySelector("strong");
-  if (combinedStrong) combinedStrong.textContent = euro.format(orderValue + totalDifference);
+  if (combinedStrong) combinedStrong.textContent = euro.format(orderValue + current.difference);
 }
 
 function renderHufMetric() {
